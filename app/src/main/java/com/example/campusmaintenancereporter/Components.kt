@@ -14,10 +14,13 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 
 @Composable
 fun AppCard(
@@ -99,22 +102,33 @@ fun OverdueBadge() {
 }
 
 @Composable
-fun EmergencyNotice(modifier: Modifier = Modifier) {
+fun EmergencyNotice(modifier: Modifier = Modifier, compact: Boolean = false) {
     AppCard(modifier = modifier, container = MaterialTheme.colorScheme.errorContainer) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
+        Row(
+            Modifier.padding(if (compact) 12.dp else 14.dp),
+            verticalAlignment = if (compact) Alignment.CenterVertically else Alignment.Top
+        ) {
             Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
             Spacer(Modifier.width(12.dp))
-            Column {
+            if (compact) {
                 Text(
-                    "Is it an emergency?",
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-                Text(
-                    "Fire, electrical hazards, flooding or injury must be reported to campus security or the emergency line first, not only through this app.",
+                    "Emergency? Contact campus security first, then report it here.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
+            } else {
+                Column {
+                    Text(
+                        "Is it an emergency?",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        "Fire, electrical hazards, flooding or injury must be reported to campus security or the emergency line first, not only through this app.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
         }
     }
@@ -141,43 +155,62 @@ fun StatTile(
 
 @Composable
 fun ReportCard(report: Report, onClick: () -> Unit, showAssignee: Boolean = false) {
+    // Grey = finished, red = overdue, otherwise the priority colour
+    val stripe = when {
+        !report.isOpen -> Color(0xFFB0BEC5)
+        report.overdue -> Color(0xFFC62828)
+        else -> report.priority.color
+    }
     AppCard(onClick = onClick) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    report.id,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                if (report.overdue) {
-                    OverdueBadge()
-                    Spacer(Modifier.width(8.dp))
-                }
-                StatusChip(report.status)
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(report.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.LocationOn, contentDescription = null,
-                    modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(report.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PriorityTag(report.priority)
-                Spacer(Modifier.width(12.dp))
-                Text(report.category, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (showAssignee) {
-                    Spacer(Modifier.weight(1f))
+        Row(Modifier.height(IntrinsicSize.Min)) {
+            Box(Modifier.width(6.dp).fillMaxHeight().background(stripe))
+            Column(Modifier.weight(1f).padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        report.assignedTo ?: "Unassigned",
+                        report.id,
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (report.assignedTo == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (report.overdue) {
+                        OverdueBadge()
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    StatusChip(report.status)
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(report.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.LocationOn, contentDescription = null,
+                        modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(report.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PriorityTag(report.priority)
+                    Spacer(Modifier.width(12.dp))
+                    Text(report.category, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (showAssignee) {
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            report.assignedTo ?: "Unassigned",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (report.assignedTo == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (report.isOpen) {
+                    Spacer(Modifier.height(6.dp))
+                    val dueText = if (report.overdue) "Overdue since ${report.dueLabel}" else "Due ${report.dueLabel}"
+                    Text(
+                        dueText + if (report.escalated) " · Escalated" else "",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (report.overdue) FontWeight.Bold else FontWeight.Normal,
+                        color = if (report.overdue) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -214,6 +247,62 @@ fun DropdownField(
             options.forEach { option ->
                 DropdownMenuItem(text = { Text(option) }, onClick = { onSelect(option); expanded = false })
             }
+        }
+    }
+}
+
+@Composable
+fun EmptyState(
+    icon: ImageVector,
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier.size(72.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        if (actionLabel != null && onAction != null) {
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = onAction) { Text(actionLabel) }
+        }
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun ComponentsPreview() {
+    MaintenanceTheme {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            EmergencyNotice()
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile("Overdue", 2, Modifier.weight(1f), Status.REOPENED.color)
+                StatTile("New", 3, Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusChip(Status.REPORTED)
+                StatusChip(Status.IN_PROGRESS)
+                OverdueBadge()
+            }
+            ReportCard(SampleData.reports[1], onClick = {}, showAssignee = true)
+            DropdownField("Issue type", "Plumbing", CampusOptions.categories, onSelect = {})
         }
     }
 }

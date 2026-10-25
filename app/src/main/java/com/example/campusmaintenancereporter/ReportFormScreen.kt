@@ -15,20 +15,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportFormScreen(onBack: () -> Unit, onSubmit: (NewReport) -> String, onDone: () -> Unit) {
-    var building by remember { mutableStateOf("") }
-    var block by remember { mutableStateOf("") }
-    var room by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var priority by remember { mutableStateOf(Priority.MEDIUM) }
-    var photoAdded by remember { mutableStateOf(false) }
-    var tried by remember { mutableStateOf(false) }
-    var reference by remember { mutableStateOf<String?>(null) }
+    var building by rememberSaveable { mutableStateOf("") }
+    var block by rememberSaveable { mutableStateOf("") }
+    var room by rememberSaveable { mutableStateOf("") }
+    var category by rememberSaveable { mutableStateOf("") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    var priority by rememberSaveable { mutableStateOf(Priority.MEDIUM) }
+    var photoAdded by rememberSaveable { mutableStateOf(false) }
+    var tried by rememberSaveable { mutableStateOf(false) }
+    var reference by rememberSaveable { mutableStateOf<String?>(null) }
 
     val isSafety = category == "Safety"
 
@@ -91,7 +92,7 @@ fun ReportFormScreen(onBack: () -> Unit, onSubmit: (NewReport) -> String, onDone
                 }
             }
             Text(
-                priority.hint,
+                "${priority.hint}\nTarget fix time: ${priority.targetDays} ${if (priority.targetDays == 1) "day" else "days"}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

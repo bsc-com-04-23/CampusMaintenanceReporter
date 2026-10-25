@@ -15,29 +15,32 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Info
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     role: Role,
+    userName: String = "",
     reports: List<Report>,
     onReport: () -> Unit,
     onMyReports: () -> Unit,
     onStatusClick: (String) -> Unit,
     onOpen: (String) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    bottomBar: @Composable () -> Unit = {}
 ) {
+    SignOutOnBack(onLogout)
     val mine = reports
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             AppTopBar("Campus Maintenance", actions = {
-                IconButton(onClick = onLogout) {
-                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sign out")
-                }
+                AccountMenu(userName, role, onLogout)
             })
-        }
+        },
+        bottomBar = bottomBar
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding).fillMaxSize(),
@@ -52,7 +55,6 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            item { EmergencyNotice() }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ActionCard(
@@ -70,13 +72,30 @@ fun HomeScreen(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatTile("Submitted", mine.size, Modifier.weight(1f), onClick = { onStatusClick("ALL") })
-                    StatTile("In progress", mine.count { it.status == Status.IN_PROGRESS }, Modifier.weight(1f), Status.IN_PROGRESS.color, onClick = { onStatusClick("IN_PROGRESS") })
-                    StatTile("Resolved", mine.count { it.status == Status.RESOLVED }, Modifier.weight(1f), Status.RESOLVED.color, onClick = { onStatusClick("RESOLVED") })
+                    StatTile(
+                        "In progress", mine.count { it.status == Status.IN_PROGRESS },
+                        Modifier.weight(1f), Status.IN_PROGRESS.color, onClick = { onStatusClick("IN_PROGRESS") }
+                    )
+                    StatTile(
+                        "Resolved", mine.count { it.status == Status.RESOLVED },
+                        Modifier.weight(1f), Status.RESOLVED.color, onClick = { onStatusClick("RESOLVED") }
+                    )
                 }
             }
+            item { EmergencyNotice(compact = true) }
             item { SectionTitle("Recent updates") }
-            items(mine.take(3)) { report ->
-                ReportCard(report, onClick = { onOpen(report.id) })
+            if (mine.isEmpty()) {
+                item {
+                    EmptyState(
+                        icon = Icons.Default.Info,
+                        title = "No reports yet",
+                        message = "Tap Report a Problem to log your first issue. You can follow it here."
+                    )
+                }
+            } else {
+                items(mine.take(3)) { report ->
+                    ReportCard(report, onClick = { onOpen(report.id) })
+                }
             }
         }
     }

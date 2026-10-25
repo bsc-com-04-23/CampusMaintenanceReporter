@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -12,28 +13,37 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun LoginScreen(onLogin: (String, Role) -> Unit) {
-    var email by remember { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    fun attemptLogin() {
+    val focus = LocalFocusManager.current
+    val canSubmit = email.isNotBlank() && password.isNotBlank()
+
+    fun signIn() {
         val role = DemoAccounts.login(email, password)
         if (role != null) {
             error = null
             onLogin(email.trim().lowercase(), role)
         } else {
-            // Same message for wrong email or wrong password, so nothing is revealed
             error = "Incorrect email or password."
         }
     }
@@ -48,11 +58,89 @@ fun LoginScreen(onLogin: (String, Role) -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(32.dp))
+        LoginHeader()
+        Spacer(Modifier.height(32.dp))
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it; error = null },
+            label = { Text("Email or registration number") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }),
+            isError = error != null,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it; error = null },
+            label = { Text("Password") },
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            trailingIcon = {
+                TextButton(onClick = { showPassword = !showPassword }) {
+                    Text(if (showPassword) "Hide" else "Show")
+                }
+            },
+            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                focus.clearFocus()
+                if (canSubmit) signIn()
+            }),
+            isError = error != null,
+            supportingText = { error?.let { Text(it) } },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        TextButton(
+            onClick = { showHelp = true },
+            modifier = Modifier.align(Alignment.End)
+        ) { Text("Forgot password?") }
+
+        Spacer(Modifier.height(8.dp))
+
+        Button(
+            onClick = { signIn() },
+            enabled = canSubmit,
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) {
+            Text("Sign in", style = MaterialTheme.typography.titleMedium)
+        }
+    }
+
+    if (showHelp) {
+        AlertDialog(
+            onDismissRequest = { showHelp = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Forgot your password?") },
+            text = {
+                Text("Password reset will be available once online accounts are added. For now, ask the campus maintenance office to reset it for you.")
+            },
+            confirmButton = { TextButton(onClick = { showHelp = false }) { Text("OK") } }
+        )
+    }
+}
+
+@Composable
+private fun LoginHeader() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(84.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
+            modifier = Modifier
+                .size(84.dp)
+                .background(MaterialTheme.colorScheme.primary, CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Build, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(44.dp))
+            Icon(
+                Icons.Default.Build,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(44.dp)
+            )
         }
         Spacer(Modifier.height(16.dp))
         Text(
@@ -66,37 +154,6 @@ fun LoginScreen(onLogin: (String, Role) -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it; error = null },
-            label = { Text("Email or registration number") },
-            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            isError = error != null,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it; error = null },
-            label = { Text("Password") },
-            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = error != null,
-            supportingText = { error?.let { Text(it) } },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = { attemptLogin() },
-            enabled = email.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().height(52.dp)
-        ) { Text("Sign in", style = MaterialTheme.typography.titleMedium) }
     }
 }
 

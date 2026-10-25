@@ -38,6 +38,7 @@ android {
 }
 
 dependencies {
+    testImplementation(libs.kotlinx.coroutines.test)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
