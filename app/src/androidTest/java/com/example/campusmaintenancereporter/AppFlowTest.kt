@@ -64,18 +64,19 @@ class AppFlowTest {
     }
 
     @Test
-    fun technicianLandsOnTheDashboardWithoutLogAReport() {
+    fun technicianLandsOnTheirJobsWithoutLogAReport() {
         login("maintenance@campus.test", "maint123")
-        rule.onNodeWithText("Maintenance Dashboard").assertIsDisplayed()
+        rule.onNodeWithText("My Jobs").assertIsDisplayed()
         rule.onNodeWithText("Log a report", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
-    fun technicianMyJobsShowsOnlyAssignedJobs() {
+    fun technicianSeesOnlyTheJobsAssignedToThem() {
         login("maintenance@campus.test", "maint123")
-        rule.onNodeWithText("My Jobs").performClick()
         rule.onNodeWithText("Leaking tap").assertIsDisplayed()
         rule.onNodeWithText("Broken classroom light").assertDoesNotExist()
+        rule.onNodeWithText("Exposed wiring near socket").assertDoesNotExist()
+        rule.onNodeWithText("No internet in lab").assertDoesNotExist()
     }
 
     @Test

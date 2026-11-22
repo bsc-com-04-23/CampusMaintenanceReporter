@@ -51,7 +51,8 @@ data class Report(
     val timeline: List<TimelineEntry> = emptyList(),
     val reporterEmail: String = "student@campus.test",
     val dueAt: Long = createdAt + priority.targetDays * DAY_MS,
-    val escalated: Boolean = false
+    val escalated: Boolean = false,
+    val photoPath: String? = null
 ) {
     val date: String get() = formatDate(createdAt)
     val dueLabel: String get() = formatDate(dueAt, "d MMM")
@@ -172,7 +173,8 @@ data class NewReport(
     val category: String,
     val title: String,
     val description: String,
-    val priority: Priority
+    val priority: Priority,
+    val photoPath: String? = null
 )
 
 data class Session(val email: String, val role: Role)

@@ -24,7 +24,8 @@ class ReportRepository {
             status = Status.REPORTED,
             createdAt = created,
             timeline = listOf(TimelineEntry(formatDate(created, "d MMM, HH:mm"), reporterName, "Report submitted")),
-            reporterEmail = reporterEmail
+            reporterEmail = reporterEmail,
+            photoPath = newReport.photoPath
         )
         _reports.update { listOf(report) + it }
         return id

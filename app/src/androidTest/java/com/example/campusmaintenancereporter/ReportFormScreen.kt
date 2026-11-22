@@ -164,9 +164,10 @@ class ReportFormScreenTest {
     }
 
     @Test
-    fun photoButtonTogglesTheAttachedState() {
+    fun photoOptionsAreOffered() {
         show()
-        rule.onNodeWithText("Add a photo").performScrollTo().performClick()
-        rule.onNodeWithText("Photo attached (tap to remove)").assertExists()
+        rule.onNodeWithText("Take photo").performScrollTo().assertExists()
+        rule.onNodeWithText("From gallery").performScrollTo().assertExists()
+        rule.onNodeWithText("Please do not photograph people.").assertExists()
     }
 }

@@ -16,53 +16,6 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModelTest {
 
-    @Test
-    fun supervisorCannotConfirmOrReopenAReportersRepair() {
-        signInSupervisor()
-        vm.updateStatus("CMR-1038", Status.CLOSED, "Closing")
-        vm.updateStatus("CMR-1038", Status.REOPENED, "Reopening")
-        assertEquals(Status.RESOLVED, report("CMR-1038").status)
-    }
-
-    @Test
-    fun aReportCanBeTakenFromSubmittedToClosed() {
-        signInStudent()
-        val id = vm.submitReport(NewReport("Library", "Plumbing", "Leaking tap", "Drips", Priority.LOW))
-
-        signInBanda()
-        vm.updateStatus(id, Status.IN_PROGRESS, "Work started")
-        vm.updateStatus(id, Status.RESOLVED, "Fixed")
-
-        signInStudent()
-        vm.updateStatus(id, Status.CLOSED, "Repair confirmed")
-
-        val done = report(id)
-        assertEquals(Status.CLOSED, done.status)
-        assertEquals("J. Banda", done.assignedTo)
-        assertEquals(
-            listOf("Report submitted", "Work started", "Fixed", "Repair confirmed"),
-            done.timeline.map { it.text }
-        )
-    }
-
-    @Test
-    fun aReopenedReportCanBeWorkedOnAgain() {
-        signInStudent()
-        vm.updateStatus("CMR-1038", Status.REOPENED, "Reopened: problem still exists")
-
-        signInPhiri() // CMR-1038 is assigned to P. Phiri
-        vm.updateStatus("CMR-1038", Status.IN_PROGRESS, "Back on it")
-        vm.updateStatus("CMR-1038", Status.RESOLVED, "Fixed properly")
-        assertEquals(Status.RESOLVED, report("CMR-1038").status)
-    }
-
-    @Test
-    fun aClosedReportCannotBeChangedByMaintenance() {
-        signInPhiri()
-        vm.updateStatus("CMR-1021", Status.IN_PROGRESS, "Trying to restart")
-        assertEquals(Status.CLOSED, report("CMR-1021").status)
-    }
-
     private lateinit var vm: AppViewModel
 
     @Before
@@ -80,10 +33,12 @@ class AppViewModelTest {
     private fun signInStaff() = vm.signIn("staff@campus.test", Role.STAFF)
     private fun signInBanda() = vm.signIn("maintenance@campus.test", Role.MAINTENANCE)
     private fun signInPhiri() = vm.signIn("phiri@campus.test", Role.MAINTENANCE)
+    private fun signInMussa() = vm.signIn("mussa@campus.test", Role.MAINTENANCE)
     private fun signInSupervisor() = vm.signIn("supervisor@campus.test", Role.SUPERVISOR)
 
     /** Looks a report up through the current session's view of the data. */
     private fun report(id: String): Report = vm.visibleReports.value.first { it.id == id }
+    private fun ids(): List<String> = vm.visibleReports.value.map { it.id }
 
     // ---------- Who sees what ----------
 
@@ -104,15 +59,30 @@ class AppViewModelTest {
     @Test
     fun staffSeesOnlyOwnReports() {
         signInStaff()
-        assertEquals(listOf("CMR-1045"), vm.visibleReports.value.map { it.id })
+        assertEquals(listOf("CMR-1045"), ids())
     }
 
     @Test
-    fun technicianAndSupervisorSeeEverything() {
-        signInBanda()
-        assertEquals(SampleData.reports.size, vm.visibleReports.value.size)
+    fun supervisorSeesEverything() {
         signInSupervisor()
         assertEquals(SampleData.reports.size, vm.visibleReports.value.size)
+    }
+
+    @Test
+    fun technicianSeesOnlyTheirOwnJobs() {
+        signInBanda()
+        assertEquals(listOf("CMR-1042"), ids())
+        signInPhiri()
+        assertEquals(listOf("CMR-1038", "CMR-1021"), ids())
+        signInMussa()
+        assertEquals(listOf("CMR-1030"), ids())
+    }
+
+    @Test
+    fun technicianDoesNotSeeUnassignedJobs() {
+        signInBanda()
+        assertFalse("CMR-1045" in ids())
+        assertFalse("CMR-1047" in ids())
     }
 
     @Test
@@ -150,19 +120,21 @@ class AppViewModelTest {
     @Test
     fun technicianCannotAssign() {
         signInBanda()
-        vm.assign("CMR-1047", "P. Phiri")
-        assertNull(report("CMR-1047").assignedTo)
+        vm.assign("CMR-1042", "P. Phiri")
+        assertEquals("J. Banda", report("CMR-1042").assignedTo)
     }
 
     // ---------- Doing the work ----------
 
     @Test
-    fun technicianTakesOwnershipWhenAcceptingAFreeJob() {
+    fun technicianCannotStartAnUnassignedJob() {
         signInBanda()
         vm.updateStatus("CMR-1047", Status.IN_PROGRESS, "On my way")
-        val updated = report("CMR-1047")
-        assertEquals(Status.IN_PROGRESS, updated.status)
-        assertEquals("J. Banda", updated.assignedTo)
+
+        signInSupervisor()
+        val job = report("CMR-1047")
+        assertEquals(Status.REPORTED, job.status)
+        assertNull(job.assignedTo)
     }
 
     @Test
@@ -178,6 +150,8 @@ class AppViewModelTest {
     fun technicianCannotUpdateAnotherTechniciansJob() {
         signInPhiri()
         vm.updateStatus("CMR-1042", Status.RESOLVED, "Done")
+
+        signInSupervisor()
         assertEquals(Status.IN_PROGRESS, report("CMR-1042").status)
         assertEquals("J. Banda", report("CMR-1042").assignedTo)
     }
@@ -185,18 +159,17 @@ class AppViewModelTest {
     @Test
     fun technicianCannotCloseOrReopen() {
         signInBanda()
-        vm.updateStatus("CMR-1047", Status.CLOSED, "Closing")
-        vm.updateStatus("CMR-1047", Status.REOPENED, "Reopening")
-        assertEquals(Status.REPORTED, report("CMR-1047").status)
-        assertNull(report("CMR-1047").assignedTo)
+        vm.updateStatus("CMR-1042", Status.CLOSED, "Closing")
+        vm.updateStatus("CMR-1042", Status.REOPENED, "Reopening")
+        assertEquals(Status.IN_PROGRESS, report("CMR-1042").status)
     }
 
     @Test
     fun notesAreRecordedWithoutChangingTheStatus() {
         signInBanda()
-        vm.addNote("CMR-1047", "Parts ordered")
-        val updated = report("CMR-1047")
-        assertEquals(Status.REPORTED, updated.status)
+        vm.addNote("CMR-1042", "Parts ordered")
+        val updated = report("CMR-1042")
+        assertEquals(Status.IN_PROGRESS, updated.status)
         assertEquals("Parts ordered", updated.timeline.last().text)
         assertEquals("J. Banda", updated.timeline.last().author)
     }
@@ -285,5 +258,57 @@ class AppViewModelTest {
         signInSupervisor()
         vm.escalate("CMR-1045")
         assertFalse(report("CMR-1045").escalated)
+    }
+
+    // ---------- Whole life of a report ----------
+
+    @Test
+    fun supervisorCannotConfirmOrReopenAReportersRepair() {
+        signInSupervisor()
+        vm.updateStatus("CMR-1038", Status.CLOSED, "Closing")
+        vm.updateStatus("CMR-1038", Status.REOPENED, "Reopening")
+        assertEquals(Status.RESOLVED, report("CMR-1038").status)
+    }
+
+    @Test
+    fun aReportCanBeTakenFromSubmittedToClosed() {
+        signInStudent()
+        val id = vm.submitReport(NewReport("Library", "Plumbing", "Leaking tap", "Drips", Priority.LOW))
+
+        signInSupervisor()
+        vm.assign(id, "J. Banda")
+
+        signInBanda()
+        vm.updateStatus(id, Status.IN_PROGRESS, "Work started")
+        vm.updateStatus(id, Status.RESOLVED, "Fixed")
+
+        signInStudent()
+        vm.updateStatus(id, Status.CLOSED, "Repair confirmed")
+
+        val done = report(id)
+        assertEquals(Status.CLOSED, done.status)
+        assertEquals("J. Banda", done.assignedTo)
+        assertEquals(
+            listOf("Report submitted", "Assigned to J. Banda", "Work started", "Fixed", "Repair confirmed"),
+            done.timeline.map { it.text }
+        )
+    }
+
+    @Test
+    fun aReopenedReportCanBeWorkedOnAgain() {
+        signInStudent()
+        vm.updateStatus("CMR-1038", Status.REOPENED, "Reopened: problem still exists")
+
+        signInPhiri() // CMR-1038 is assigned to P. Phiri
+        vm.updateStatus("CMR-1038", Status.IN_PROGRESS, "Back on it")
+        vm.updateStatus("CMR-1038", Status.RESOLVED, "Fixed properly")
+        assertEquals(Status.RESOLVED, report("CMR-1038").status)
+    }
+
+    @Test
+    fun aClosedReportCannotBeChangedByMaintenance() {
+        signInPhiri()
+        vm.updateStatus("CMR-1021", Status.IN_PROGRESS, "Trying to restart")
+        assertEquals(Status.CLOSED, report("CMR-1021").status)
     }
 }

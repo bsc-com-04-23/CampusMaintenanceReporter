@@ -10,6 +10,21 @@ import org.junit.Test
 class ReportRepositoryTest {
 
     @Test
+    fun addKeepsThePhotoPath() {
+        repo.add(
+            NewReport("Library", "Plumbing", "Leaking tap", "Drips", Priority.LOW, photoPath = "/data/photo.jpg"),
+            "student@campus.test", "Student"
+        )
+        assertEquals("/data/photo.jpg", repo.reports.value.first().photoPath)
+    }
+
+    @Test
+    fun aReportWithoutAPhotoHasNoPath() {
+        repo.add(newReport(), "student@campus.test", "Student")
+        assertNull(repo.reports.value.first().photoPath)
+    }
+
+    @Test
     fun newReportRecordsItsCreationTime() {
         val before = System.currentTimeMillis()
         repo.add(newReport(), "student@campus.test", "Student")

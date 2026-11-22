@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,16 +62,12 @@ fun AppNav(vm: AppViewModel = viewModel()) {
         )
     }
 
-    val jobsBar: @Composable (Int) -> Unit = { selected ->
-        val second = if (role == Role.SUPERVISOR) {
-            NavTab("Unassigned", Icons.Default.Warning) { goTab("unassigned", "dashboard") }
-        } else {
-            NavTab("My Jobs", Icons.Default.Person) { goTab("myjobs", "dashboard") }
-        }
+    // Supervisors have two tabs. Technicians have a single list of their own jobs.
+    val supervisorBar: @Composable (Int) -> Unit = { selected ->
         AppBottomBar(
             tabs = listOf(
                 NavTab("All Jobs", Icons.AutoMirrored.Filled.List) { goTab("dashboard", "dashboard") },
-                second
+                NavTab("Unassigned", Icons.Default.Warning) { goTab("unassigned", "dashboard") }
             ),
             selected = selected
         )
@@ -120,6 +115,7 @@ fun AppNav(vm: AppViewModel = viewModel()) {
                 onBack = { nav.popBackStack() },
                 onOpen = openDetails,
                 initialFilter = Status.entries.firstOrNull { it.name == wanted },
+                onReport = { nav.navigate("report") },
                 bottomBar = { reporterBar(2) }
             )
         }
@@ -145,19 +141,7 @@ fun AppNav(vm: AppViewModel = viewModel()) {
                 onOpen = openDetails,
                 onNewReport = { nav.navigate("report") },
                 onLogout = logout,
-                bottomBar = { jobsBar(0) }
-            )
-        }
-        composable("myjobs") {
-            MaintenanceDashboardScreen(
-                role = role,
-                userName = userName,
-                reports = reports,
-                tab = JobsTab.MINE,
-                onOpen = openDetails,
-                onNewReport = { nav.navigate("report") },
-                onLogout = logout,
-                bottomBar = { jobsBar(1) }
+                bottomBar = { if (role == Role.SUPERVISOR) supervisorBar(0) }
             )
         }
         composable("unassigned") {
@@ -169,7 +153,7 @@ fun AppNav(vm: AppViewModel = viewModel()) {
                 onOpen = openDetails,
                 onNewReport = { nav.navigate("report") },
                 onLogout = logout,
-                bottomBar = { jobsBar(1) }
+                bottomBar = { supervisorBar(1) }
             )
         }
     }

@@ -39,12 +39,13 @@ fun ReportDetailsScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val toast: (String) -> Unit = { message -> scope.launch { snackbar.showSnackbar(message) } }
+    var showPhoto by remember { mutableStateOf(false) }
 
     val isSupervisor = role == Role.SUPERVISOR
     val isTechnician = role == Role.MAINTENANCE
     val isReporter = !role.isMaintenance
-    val isMyJobOrFree = report.assignedTo == null || report.assignedTo == userName
-    val canUpdate = isSupervisor || (isTechnician && isMyJobOrFree)
+    val isMyJob = report.assignedTo == userName
+    val canUpdate = isSupervisor || (isTechnician && isMyJob)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -90,11 +91,28 @@ fun ReportDetailsScreen(
                         if (report.escalated) InfoRow("Escalated", "Supervisor notified")
                         HorizontalDivider()
                         Text(report.description, style = MaterialTheme.typography.bodyMedium)
-                        Box(
-                            Modifier.fillMaxWidth().height(150.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
-                        ) { Text("Photo", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+
+                        // The reporter's photo, or a grey box when there is none
+                        val photo = report.photoPath
+                        if (photo != null) {
+                            PhotoImage(
+                                photo,
+                                Modifier.fillMaxWidth().height(220.dp),
+                                onClick = { showPhoto = true }
+                            )
+                            Text(
+                                "Tap the photo to view it full size",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (showPhoto) FullScreenPhoto(photo, onClose = { showPhoto = false })
+                        } else {
+                            Box(
+                                Modifier.fillMaxWidth().height(150.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) { Text("Photo", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
                     }
                 }
             }
@@ -104,17 +122,21 @@ fun ReportDetailsScreen(
                 item { AssignCard(report, onAssign, toast) }
             }
 
-            // Technician or supervisor: update the job
+            // Technician (own jobs only) or supervisor: update the job
             if (canUpdate && report.isOpen) {
                 item { UpdateCard(onStatus, onNote, toast) }
             }
 
-            // Technician looking at someone else's job
-            if (isTechnician && !isMyJobOrFree && report.isOpen) {
+            // Technician looking at a job that is not theirs
+            if (isTechnician && !isMyJob && report.isOpen) {
                 item {
                     AppCard {
                         Text(
-                            "This job is assigned to ${report.assignedTo}. Only they or a supervisor can update it.",
+                            if (report.assignedTo == null) {
+                                "This job has not been assigned yet. A supervisor will assign it."
+                            } else {
+                                "This job is assigned to ${report.assignedTo}. Only they or a supervisor can update it."
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(16.dp)
                         )

@@ -15,12 +15,16 @@ class AppViewModel : ViewModel() {
     private val _session = MutableStateFlow<Session?>(null)
     val session: StateFlow<Session?> = _session.asStateFlow()
 
-    /** Reporters see only their own reports; maintenance and supervisors see everything. */
+    /**
+     * Reporters see only their own reports, technicians only the jobs assigned to them,
+     * and supervisors see everything.
+     */
     val visibleReports: StateFlow<List<Report>> =
         combine(repo.reports, _session) { all, s ->
             when {
                 s == null -> emptyList()
-                s.role.isMaintenance -> all
+                s.role == Role.SUPERVISOR -> all
+                s.role == Role.MAINTENANCE -> all.filter { it.assignedTo == nameOf(s) }
                 else -> all.filter { it.reporterEmail == s.email }
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -49,15 +53,7 @@ class AppViewModel : ViewModel() {
         }
         if (!allowed) return
 
-        // A technician who accepts an unassigned job takes ownership of it
-        val takeOwnership = s.role == Role.MAINTENANCE && current.assignedTo == null
-        repo.change(
-            id = id,
-            author = nameOf(s),
-            text = text,
-            newStatus = status,
-            assignTo = if (takeOwnership) nameOf(s) else null
-        )
+        repo.change(id = id, author = nameOf(s), text = text, newStatus = status)
     }
 
     fun addNote(id: String, text: String) {
@@ -81,10 +77,10 @@ class AppViewModel : ViewModel() {
         repo.change(id, nameOf(s), "Escalated: still not fixed", escalate = true)
     }
 
-    /** Supervisors can work on any job. Technicians only on free jobs or their own. */
+    /** Supervisors can work on any job. Technicians only on jobs assigned to them. */
     private fun canWork(s: Session, r: Report): Boolean = when (s.role) {
         Role.SUPERVISOR -> true
-        Role.MAINTENANCE -> r.assignedTo == null || r.assignedTo == nameOf(s)
+        Role.MAINTENANCE -> r.assignedTo == nameOf(s)
         else -> false
     }
 
