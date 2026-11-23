@@ -22,7 +22,12 @@ class LoginScreenTest {
     private fun show() {
         result = null
         rule.setContent {
-            MaintenanceTheme { LoginScreen { email, role -> result = email to role } }
+            MaintenanceTheme {
+                LoginScreen(
+                    authenticate = { email, password -> DemoAuthService().authenticate(email, password) },
+                    onLogin = { s -> result = s.email to s.role }
+                )
+            }
         }
     }
 

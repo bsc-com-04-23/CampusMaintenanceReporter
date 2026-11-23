@@ -25,7 +25,8 @@ fun ReportDetailsScreen(
     onStatus: (Status, String) -> Unit,
     onNote: (String) -> Unit,
     onEscalate: () -> Unit,
-    onAssign: (String) -> Unit
+    onAssign: (String) -> Unit,
+    loadPhoto: suspend (String) -> String? = { null }
 ) {
     if (report == null) {
         Scaffold(topBar = { AppTopBar("Report Details", onBack) }) { padding ->
@@ -40,6 +41,10 @@ fun ReportDetailsScreen(
     val scope = rememberCoroutineScope()
     val toast: (String) -> Unit = { message -> scope.launch { snackbar.showSnackbar(message) } }
     var showPhoto by remember { mutableStateOf(false) }
+    var photoPath by remember(report.id) { mutableStateOf(report.photoPath) }
+    LaunchedEffect(report.id, report.hasPhoto) {
+        if (report.hasPhoto && photoPath == null) photoPath = loadPhoto(report.id)
+    }
 
     val isSupervisor = role == Role.SUPERVISOR
     val isTechnician = role == Role.MAINTENANCE
@@ -93,7 +98,7 @@ fun ReportDetailsScreen(
                         Text(report.description, style = MaterialTheme.typography.bodyMedium)
 
                         // The reporter's photo, or a grey box when there is none
-                        val photo = report.photoPath
+                        val photo = photoPath
                         if (photo != null) {
                             PhotoImage(
                                 photo,
@@ -111,7 +116,7 @@ fun ReportDetailsScreen(
                                 Modifier.fillMaxWidth().height(150.dp)
                                     .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
-                            ) { Text("Photo", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            ) { Text(if (report.hasPhoto) "Loading photo..." else "Photo", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
                     }
                 }

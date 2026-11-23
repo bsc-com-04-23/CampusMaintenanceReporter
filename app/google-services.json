@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "803446635939",
+    "project_id": "campus-maintenance-reporter",
+    "storage_bucket": "campus-maintenance-reporter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:803446635939:android:1dabdb082cb7da7702ae16",
+        "android_client_info": {
+          "package_name": "com.example.campusmaintenancereporter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAMCUw03OEv0gC-2ryZqg4u6OYkitFiLY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

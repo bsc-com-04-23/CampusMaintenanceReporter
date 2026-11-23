@@ -26,7 +26,7 @@ class ReportFormScreenTest {
             MaintenanceTheme {
                 ReportFormScreen(
                     onBack = {},
-                    onSubmit = { submitted = it; "CMR-9999" },
+                    onSubmit = { report, done -> submitted = report; done("CMR-9999") },
                     onDone = {}
                 )
             }

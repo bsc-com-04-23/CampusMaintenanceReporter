@@ -40,6 +40,7 @@ fun MaintenanceDashboardScreen(
     onOpen: (String) -> Unit,
     onNewReport: () -> Unit,
     onLogout: () -> Unit,
+    onSeed: (() -> Unit)? = null,
     bottomBar: @Composable () -> Unit = {}
 ) {
     SignOutOnBack(onLogout)
@@ -134,7 +135,9 @@ fun MaintenanceDashboardScreen(
                         EmptyState(
                             icon = if (base.isNotEmpty()) Icons.Default.Search else Icons.Default.CheckCircle,
                             title = emptyTitle,
-                            message = emptyMessage
+                            message = emptyMessage,
+                            actionLabel = if (onSeed != null && base.isEmpty() && tab == JobsTab.ALL) "Load sample reports" else null,
+                            onAction = onSeed
                         )
                     }
                 } else {

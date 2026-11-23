@@ -15,6 +15,11 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppViewModelTest {
+    private fun submit(report: NewReport): String {
+        var id = ""
+        vm.submitReport(report) { id = it ?: "" }
+        return id
+    }
 
     private lateinit var vm: AppViewModel
 
@@ -95,7 +100,7 @@ class AppViewModelTest {
     @Test
     fun submittedReportBelongsToTheSubmitterOnly() {
         signInStudent()
-        val id = vm.submitReport(NewReport("Library", "Plumbing", "Leaking tap", "Drips", Priority.LOW))
+        val id = submit(NewReport("Library", "Plumbing", "Leaking tap", "Drips", Priority.LOW))
         assertEquals(id, vm.visibleReports.value.first().id)
 
         signInStaff()
@@ -273,7 +278,7 @@ class AppViewModelTest {
     @Test
     fun aReportCanBeTakenFromSubmittedToClosed() {
         signInStudent()
-        val id = vm.submitReport(NewReport("Library", "Plumbing", "Leaking tap", "Drips", Priority.LOW))
+        val id = submit(NewReport("Library", "Plumbing", "Leaking tap", "Drips", Priority.LOW))
 
         signInSupervisor()
         vm.assign(id, "J. Banda")

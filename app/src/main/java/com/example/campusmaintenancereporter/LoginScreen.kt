@@ -3,12 +3,11 @@ package com.example.campusmaintenancereporter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
@@ -18,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -26,25 +26,40 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onLogin: (String, Role) -> Unit) {
+fun LoginScreen(
+    authenticate: suspend (String, String) -> AuthResult,
+    onLogin: (Session) -> Unit
+) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var showHelp by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     val focus = LocalFocusManager.current
-    val canSubmit = email.isNotBlank() && password.isNotBlank()
+    val scope = rememberCoroutineScope()
+    val canSubmit = email.isNotBlank() && password.isNotBlank() && !busy
 
     fun signIn() {
-        val role = DemoAccounts.login(email, password)
-        if (role != null) {
-            error = null
-            onLogin(email.trim().lowercase(), role)
-        } else {
-            error = "Incorrect email or password."
+        if (busy) return
+        busy = true
+        error = null
+        val cleanEmail = email.trim().lowercase()
+        scope.launch {
+            when (val result = authenticate(cleanEmail, password)) {
+                is AuthResult.Success -> {
+                    busy = false
+                    onLogin(result.session)
+                }
+                is AuthResult.Failure -> {
+                    busy = false
+                    error = result.message
+                }
+            }
         }
     }
 
@@ -109,7 +124,17 @@ fun LoginScreen(onLogin: (String, Role) -> Unit) {
             enabled = canSubmit,
             modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
-            Text("Sign in", style = MaterialTheme.typography.titleMedium)
+            if (busy) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(Modifier.width(12.dp))
+                Text("Signing in...", style = MaterialTheme.typography.titleMedium)
+            } else {
+                Text("Sign in", style = MaterialTheme.typography.titleMedium)
+            }
         }
     }
 
@@ -129,19 +154,11 @@ fun LoginScreen(onLogin: (String, Role) -> Unit) {
 @Composable
 private fun LoginHeader() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            modifier = Modifier
-                .size(84.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Build,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(44.dp)
-            )
-        }
+        Image(
+            painter = painterResource(R.drawable.app_logo),
+            contentDescription = "App logo",
+            modifier = Modifier.size(96.dp)
+        )
         Spacer(Modifier.height(16.dp))
         Text(
             "Campus Maintenance Reporter",
@@ -160,5 +177,7 @@ private fun LoginHeader() {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun LoginScreenPreview() {
-    MaintenanceTheme { LoginScreen(onLogin = { _, _ -> }) }
+    MaintenanceTheme {
+        LoginScreen(authenticate = { _, _ -> AuthResult.Failure("Preview") }, onLogin = {})
+    }
 }

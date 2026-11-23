@@ -52,7 +52,8 @@ data class Report(
     val reporterEmail: String = "student@campus.test",
     val dueAt: Long = createdAt + priority.targetDays * DAY_MS,
     val escalated: Boolean = false,
-    val photoPath: String? = null
+    val photoPath: String? = null,
+    val hasPhoto: Boolean = photoPath != null
 ) {
     val date: String get() = formatDate(createdAt)
     val dueLabel: String get() = formatDate(dueAt, "d MMM")
@@ -67,8 +68,8 @@ object CampusOptions {
         "Internet/Network", "Cleaning", "Safety", "Other"
     )
     val buildings = listOf(
-        "Makata", "Umodzi", "Dunduzu", "Mwambo 1", "Wadonda",
-        "Library", "Science Lab", "Sports Complex", "The Great Hall"
+        "Makata", "Umodzi", "Dunduzu", "Mwambo", "Wadonda",
+        "Library", "Chimphamba", "Sports Complex", "The Great Hall"
     )
     val technicians = listOf("J. Banda", "P. Phiri", "T. Mussa")
 }
@@ -177,7 +178,7 @@ data class NewReport(
     val photoPath: String? = null
 )
 
-data class Session(val email: String, val role: Role)
+data class Session(val email: String, val role: Role, val name: String = DemoAccounts.nameOf(email))
 /** Dashboard order: open jobs first, then overdue, then the most urgent priority. */
 fun List<Report>.sortedForDashboard(): List<Report> =
     sortedWith(

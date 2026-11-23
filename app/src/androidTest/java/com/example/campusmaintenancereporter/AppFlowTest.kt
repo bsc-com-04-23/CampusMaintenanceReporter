@@ -12,8 +12,15 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso
 import org.junit.Rule
 import org.junit.Test
+import org.junit.AfterClass
+import org.junit.BeforeClass
 
 class AppFlowTest {
+
+    companion object {
+        @JvmStatic @BeforeClass fun useDemoBackend() { AppConfig.useDemoBackend = true }
+        @JvmStatic @AfterClass fun restoreBackend() { AppConfig.useDemoBackend = false }
+    }
 
     @get:Rule
     val rule = createAndroidComposeRule<MainActivity>()

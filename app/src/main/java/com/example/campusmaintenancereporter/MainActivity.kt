@@ -1,6 +1,7 @@
 package com.example.campusmaintenancereporter
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,6 +11,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -30,12 +32,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppNav(vm: AppViewModel = viewModel()) {
+fun AppNav(
+    vm: AppViewModel = viewModel(factory = AppViewModelFactory(LocalContext.current.applicationContext))
+) {
+    val context = LocalContext.current
     val nav = rememberNavController()
     val session by vm.session.collectAsState()
     val reports by vm.visibleReports.collectAsState()
     val role = session?.role ?: Role.STUDENT
-    val userName = session?.let { DemoAccounts.nameOf(it.email) } ?: ""
+    val userName = session?.name ?: ""
 
     val logout: () -> Unit = {
         vm.signOut()
@@ -73,14 +78,26 @@ fun AppNav(vm: AppViewModel = viewModel()) {
         )
     }
 
+    // The sample-data button only appears for a supervisor, on an empty database
+    val seed: (() -> Unit)? = if (role == Role.SUPERVISOR) {
+        {
+            vm.loadSamples { ok ->
+                if (!ok) Toast.makeText(context, "Could not load the sample reports.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } else null
+
     NavHost(navController = nav, startDestination = "login") {
         composable("login") {
-            LoginScreen { email, pickedRole ->
-                vm.signIn(email, pickedRole)
-                nav.navigate(if (pickedRole.isMaintenance) "dashboard" else "home") {
-                    popUpTo("login") { inclusive = true }
+            LoginScreen(
+                authenticate = { email, password -> vm.authenticate(email, password) },
+                onLogin = { s ->
+                    vm.signIn(s.email, s.role, s.name)
+                    nav.navigate(if (s.role.isMaintenance) "dashboard" else "home") {
+                        popUpTo("login") { inclusive = true }
+                    }
                 }
-            }
+            )
         }
         composable("home") {
             HomeScreen(
@@ -98,7 +115,7 @@ fun AppNav(vm: AppViewModel = viewModel()) {
         composable("report") {
             ReportFormScreen(
                 onBack = { nav.popBackStack() },
-                onSubmit = { vm.submitReport(it) },
+                onSubmit = { newReport, done -> vm.submitReport(newReport, done) },
                 onDone = { nav.popBackStack() }
             )
         }
@@ -129,7 +146,8 @@ fun AppNav(vm: AppViewModel = viewModel()) {
                 onStatus = { status, text -> vm.updateStatus(id, status, text) },
                 onNote = { text -> vm.addNote(id, text) },
                 onEscalate = { vm.escalate(id) },
-                onAssign = { technician -> vm.assign(id, technician) }
+                onAssign = { technician -> vm.assign(id, technician) },
+                loadPhoto = { reportId -> vm.loadPhoto(reportId) }
             )
         }
         composable("dashboard") {
@@ -141,6 +159,7 @@ fun AppNav(vm: AppViewModel = viewModel()) {
                 onOpen = openDetails,
                 onNewReport = { nav.navigate("report") },
                 onLogout = logout,
+                onSeed = seed,
                 bottomBar = { if (role == Role.SUPERVISOR) supervisorBar(0) }
             )
         }

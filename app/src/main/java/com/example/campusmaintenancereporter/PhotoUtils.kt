@@ -20,10 +20,12 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import androidx.compose.ui.unit.dp
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 
 object PhotoUtils {
-    private const val MAX_SIDE = 1280
-    private const val JPEG_QUALITY = 80
+    private const val MAX_SIDE = 1024
+    private const val JPEG_QUALITY = 70
 
     /** A temporary file for the camera to write into. */
     fun newCameraFile(context: Context): File {
@@ -85,6 +87,25 @@ object PhotoUtils {
 
     fun delete(path: String?) {
         if (path != null) File(path).delete()
+    }
+
+    /** Turns a saved photo into text for the database, keeping it well under Firestore's size limit. */
+    fun encodeForUpload(path: String): String? = try {
+        var bytes = File(path).readBytes()
+        if (bytes.size > 500_000) {
+            val bitmap = BitmapFactory.decodeFile(path) ?: return null
+            val out = ByteArrayOutputStream()
+            var quality = 60
+            do {
+                out.reset()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+                quality -= 10
+            } while (out.size() > 500_000 && quality >= 20)
+            bytes = out.toByteArray()
+        }
+        if (bytes.size > 650_000) null else Base64.encodeToString(bytes, Base64.NO_WRAP)
+    } catch (e: Exception) {
+        null
     }
 
     private fun sampleSize(width: Int, height: Int): Int {

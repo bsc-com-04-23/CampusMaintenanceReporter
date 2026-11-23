@@ -27,7 +27,7 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportFormScreen(onBack: () -> Unit, onSubmit: (NewReport) -> String, onDone: () -> Unit) {
+fun ReportFormScreen(onBack: () -> Unit, onSubmit: (NewReport, (String?) -> Unit) -> Unit, onDone: () -> Unit) {
     var building by rememberSaveable { mutableStateOf("") }
     var block by rememberSaveable { mutableStateOf("") }
     var room by rememberSaveable { mutableStateOf("") }
@@ -41,6 +41,8 @@ fun ReportFormScreen(onBack: () -> Unit, onSubmit: (NewReport) -> String, onDone
     var pendingCameraPath by rememberSaveable { mutableStateOf<String?>(null) }
     var photoBusy by remember { mutableStateOf(false) }
     var showPhoto by remember { mutableStateOf(false) }
+    var sending by remember { mutableStateOf(false) }
+    var sendError by remember { mutableStateOf<String?>(null) }
 
     val isSafety = category == "Safety"
     val context = LocalContext.current
@@ -194,20 +196,32 @@ fun ReportFormScreen(onBack: () -> Unit, onSubmit: (NewReport) -> String, onDone
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            sendError?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
             Spacer(Modifier.height(4.dp))
             Button(
                 onClick = {
                     tried = true
                     if (building.isNotEmpty() && category.isNotEmpty() && title.isNotBlank() && description.isNotBlank()) {
                         val location = listOf(building, block, room).filter { it.isNotBlank() }.joinToString(", ")
-                        reference = onSubmit(
+                        sending = true
+                        sendError = null
+                        onSubmit(
                             NewReport(location, category, title.trim(), description.trim(), priority, photoPath)
-                        )
+                        ) { ref ->
+                            sending = false
+                            if (ref != null) {
+                                reference = ref
+                            } else {
+                                sendError = "The report could not be sent. Check your internet connection and try again."
+                            }
+                        }
                     }
                 },
-                enabled = !photoBusy,
+                enabled = !photoBusy && !sending,
                 modifier = Modifier.fillMaxWidth().height(52.dp)
-            ) { Text("Submit report", style = MaterialTheme.typography.titleMedium) }
+            ) { Text(if (sending) "Sending..." else "Submit report", style = MaterialTheme.typography.titleMedium) }
         }
     }
 
@@ -233,6 +247,6 @@ fun ReportFormScreen(onBack: () -> Unit, onSubmit: (NewReport) -> String, onDone
 @Composable
 private fun ReportFormScreenPreview() {
     MaintenanceTheme {
-        ReportFormScreen(onBack = {}, onSubmit = { "CMR-0000" }, onDone = {})
+        ReportFormScreen(onBack = {}, onSubmit = { _, done -> done("CMR-0000") }, onDone = {})
     }
 }
